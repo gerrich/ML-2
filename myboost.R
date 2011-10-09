@@ -2,7 +2,7 @@ require(rpart)
 
 my_learn<-function(features, classes, weights) {
   data<-features
-  label=classes[[1]]  
+  label=TRUE #classes[[1]]  
  
     bool_classes = (classes == label)
     data$classes<-bool_classes
@@ -36,7 +36,7 @@ boost_learn<-function(features, classes, count) {
 
     local_weights<-model_plus[[2]]
     error<-sum(local_weights*((res>0.5)!=classes))/sum(local_weights)
-    print(error)
+    # print(error)
     factor=0.5*log((1-error)/error)
     step[[2]]<-factor
     if (factor<0) {
