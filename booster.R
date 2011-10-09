@@ -15,7 +15,7 @@ uv_boost_learn<-function(features, classes, count) {
   labels=unique(classes)
   steps<-list()
   for (index in 1:count) {
-    m<-mc_boost_learn(features, classes, 5, weights)
+    m<-mc_boost_learn(features, classes, 15, weights)
     r<-mc_boost_predict(m,features)
     uvector<-classes_to_uvector(r, labels)
     
@@ -105,9 +105,11 @@ cv_test<-function(features, classes, count, learn=mc_boost_learn, predict=mc_boo
   c2<-classes[-smpl]
 
   m1<-learn(f1,c1,count)
-  m2<-learn(f2,c2,count)
   r1<-predict(m1,f2)
+  m1<-NA
+  m2<-learn(f2,c2,count)
   r2<-predict(m2,f1)
+  m2<-NA
   return((sum(r2==c1)+sum(r1==c2))/length(classes))
 }
 

@@ -12,7 +12,7 @@ my_learn<-function(features, classes, weights) {
     local_weights=weights*(bool_classes*(c0-c1) + c1)/(c1+c0)/2;
 
     # model<-glm(classes~.-classes, data, weights=local_weights, family=binomial)
-    cntrl<-rpart.control(maxdepth = 1 , minsplit=length(bool_classes), maxsurrogate = 0, usesurrogate=0, maxcompete = 1,cp = 0, xval = 0)
+    cntrl<-rpart.control(maxdepth = 10, minsplit=length(bool_classes)/20, maxsurrogate = 0, usesurrogate=0, maxcompete = 1,cp = 0, xval = 0)
     model<-rpart(classes~.-classes, data, weights=local_weights, control = cntrl)
 
   return(list(model,local_weights))
@@ -28,6 +28,7 @@ boost_learn<-function(features, classes, count, weights=rep(1/length(classes), l
   steps=list()
   for(i in 1:count) {
     step=list()
+    weights[weights>5]<-0
     model_plus<-my_learn(features, classes, weights)
     model<-model_plus[[1]]
     step[[1]]<-model
