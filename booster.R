@@ -1,3 +1,60 @@
+source("mcboost.R")
+
+classes_to_uvector<-function(res, labels) {
+  res_mtx=data.frame(matrix(nrow=length(res),ncol=length(labels), 0))
+  for (j in 1:length(labels)) {
+    res_mtx[,j]<-(labels[j]==res)
+  }
+  return(res_mtx)
+}
+
+#uv_boost_learn<-function(features, classes, count, weights=rep(1/length(classes), length(classes))) {
+uv_boost_learn<-function(features, classes, count) {
+  weights=rep(1/length(classes), length(classes))
+  class_num<-length(unique(classes))
+  labels=unique(classes)
+  steps<-list()
+  for (index in 1:count) {
+    m<-mc_boost_learn(features, classes, 5, weights)
+    r<-mc_boost_predict(m,features)
+    uvector<-classes_to_uvector(r, labels)
+    
+    cost<-rep(0,length(classes))
+    for (j in 1:length(labels)) {
+      cost<-cost+(labels[j]==classes)*uvector[,j]
+      cost<-cost-(labels[j]!=classes)*uvector[,j]/(length(labels)-1)
+    }
+
+    error<-sum(-weights*cost*(cost<0))/sum(weights)
+    factor=0.5*log((1-error)/error)
+    if (factor<0) {
+      break;
+    }
+    weights<-weights*exp(-factor*cost)/sum(weights)
+    steps[[index]]<-list()
+    steps[[index]][[1]]<-m
+    steps[[index]][[2]]<-factor
+  }
+  steps[[1]][[3]]<-unique(classes)
+  return(steps)
+}
+
+uv_boost_predict<-function(models, features) {
+  labels<-models[[1]][[3]]
+  res_mtx<-data.frame(matrix(nrow=length(features[,1]), ncol=length(labels), 0))
+  for (index in 1:length(models)) {
+    model<-models[[index]][[1]]
+    factor<-models[[index]][[2]]
+    res<-mc_boost_predict(model, features)
+   
+    for (j in 1:length(labels)) {
+      res_mtx[res == labels[j],j]<-res_mtx[res == labels[j],j]+factor
+    }  
+  }
+  classes<-labels[max.col(res_mtx)]
+  return(classes)
+}
+
 
 ovo_learn<-function(features, classes, weights) {
   data<-features
@@ -39,76 +96,18 @@ ovo_predict<-function(models, features) {
 
 logit<-function(x){return(exp(x) / (1 + exp(x)))}
 
-calc_error<-function(predict_matrix,classes, weights) {
-  labels = names(predict_matrix)
-  error = rep(0, length(classes))
-  for(index in 1:length(labels)) {
-    label<-as.character(labels[index])
-    error = error + 1-logit((predict_matrix[[index]]*2-1)*((classes==label)*2-1))
-  }
-  return(error/length(labels))
+cv_test<-function(features, classes, count, learn=mc_boost_learn, predict=mc_boost_predict) {
+  smpl<-sample(1:length(classes),length(classes)/2)
+  f1<-features[smpl,]
+  c1<-classes[smpl]
+    
+  f2<-features[-smpl,]
+  c2<-classes[-smpl]
+
+  m1<-learn(f1,c1,count)
+  m2<-learn(f2,c2,count)
+  r1<-predict(m1,f2)
+  r2<-predict(m2,f1)
+  return((sum(r2==c1)+sum(r1==c2))/length(classes))
 }
 
-calc_weights<-function(errors, weights) {
-  summ_error<-sum(errors)/length(errors)
-  factor<-0.5 * log((1-summ_error)/summ_error)
-  sum_weight=sum(weights)
-  new_weights<-weights*exp(-factor*(0.5-errors)*2)/sum_weight
-  return(list(new_weights,factor))
-}
-
-boost_step<-function(features,classes,weights) {
-  mm<-ovo_learn(features,classes,weights)
-  res<-ovo_predict(mm,features)
-  errors<-calc_error(res,classes,weights)
-  wf<-calc_weights(errors, weights)
-  return(list(mm,res,errors,wf[[1]],wf[[2]]))
-}
-
-boost_n<-function(features,classes,weights,count) {
-  steps<-list()
-  steps[[1]]<-list()
-  steps[[1]][[4]]<-weights
-  for (i in 2:(1+count)) {
-    steps[[i]] <- boost_step(features,classes,steps[[i-1]][[4]])
-  }
-  res<-data.frame(steps[[2]][[2]])
-  for (i in 3:(1+count)) {
-    res=res+data.frame(steps[[i]][[2]])
-  }
-  return(res)
-}
-
-boost_learn<-function(features, classes, count) {
-  steps=list()
-  weights<-rep(1/length(classes), length(classes))
-  for(i in 1:count) {
-    step=list()
-    model_plus<-my_learn(features, classes, weights)
-    model<-model_plus[[1]]
-    step[[1]]<-model
-    res<-my_predict(model, features)
-
-    local_weights<-model_plus[[2]]
-    error<-sum(local_weights*((res>0.5)!=classes))/sum(local_weights)
-    print(error)
-    factor=0.5*log((1-error)/error)
-    step[[2]]<-factor
-    if (factor<0) {
-      break;
-    }
-    weights=weights*exp(factor*(2*((res>0.5)!=classes)-1))/sum(weights)
-    steps[[i]]<-step
-  }
-  return(steps)
-}
-
-boost_predict<-function(steps, features) {
-  res<-rep(0,length(features[,1]))
-  weight<-0
-  for (step in steps) {
-    res<-res+step[[2]]*my_predict(step[[1]], features)
-    weight<-weight+step[[2]]
-  }
-  return(res/weight)
-}

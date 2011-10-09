@@ -24,9 +24,8 @@ my_predict<-function(model, features) {
   return(result)
 }
 
-boost_learn<-function(features, classes, count) {
+boost_learn<-function(features, classes, count, weights=rep(1/length(classes), length(classes))) {
   steps=list()
-  weights<-rep(1/length(classes), length(classes))
   for(i in 1:count) {
     step=list()
     model_plus<-my_learn(features, classes, weights)
@@ -42,7 +41,7 @@ boost_learn<-function(features, classes, count) {
     if (factor<0) {
       break;
     }
-    weights=weights*exp(factor*(2*((res>0.5)!=classes)-1))/sum(weights)
+    weights<-weights*exp(factor*(2*((res>0.5)!=classes)-1))/sum(weights)
     steps[[i]]<-step
   }
   return(steps)
