@@ -1,4 +1,5 @@
 source("mcboost.R")
+source("mc.R")
 
 classes_to_uvector<-function(res, labels) {
   res_mtx=data.frame(matrix(nrow=length(res),ncol=length(labels), 0))
@@ -15,8 +16,10 @@ uv_boost_learn<-function(features, classes, count) {
   labels=unique(classes)
   steps<-list()
   for (index in 1:count) {
-    m<-mc_boost_learn(features, classes, 15, weights)
-    r<-mc_boost_predict(m,features)
+    m<-mc_learn(features, classes, as.integer(sqrt(index)), weights)
+    #m<-mc_boost_learn(features, classes, 15, weights)
+    r<-mc_predict(m,features)
+    #r<-mc_boost_predict(m,features)
     uvector<-classes_to_uvector(r, labels)
     
     cost<-rep(0,length(classes))
@@ -45,7 +48,8 @@ uv_boost_predict<-function(models, features) {
   for (index in 1:length(models)) {
     model<-models[[index]][[1]]
     factor<-models[[index]][[2]]
-    res<-mc_boost_predict(model, features)
+    res<-mc_predict(model, features)
+    #res<-mc_boost_predict(model, features)
    
     for (j in 1:length(labels)) {
       res_mtx[res == labels[j],j]<-res_mtx[res == labels[j],j]+factor
@@ -103,13 +107,16 @@ cv_test<-function(features, classes, count, learn=mc_boost_learn, predict=mc_boo
     
   f2<-features[-smpl,]
   c2<-classes[-smpl]
-
+print("start1")
   m1<-learn(f1,c1,count)
   r1<-predict(m1,f2)
   m1<-NA
+print("start2")
   m2<-learn(f2,c2,count)
   r2<-predict(m2,f1)
   m2<-NA
+print("OK")
+
   return((sum(r2==c1)+sum(r1==c2))/length(classes))
 }
 
