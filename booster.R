@@ -18,17 +18,21 @@ uv_boost_learn<-function(features, classes, count) {
   for (index in 1:count) {
     m<-mc_learn(features, classes, as.integer(sqrt(index)), weights)
     #m<-mc_boost_learn(features, classes, 15, weights)
-    r<-mc_predict(m,features)
+    r<-mc_predict(m,features,mode="raw")
     #r<-mc_boost_predict(m,features)
-    uvector<-classes_to_uvector(r, labels)
-    
+    uvector<-r[[1]]
+    #uvector<-classes_to_uvector(r, labels)
+   #print(uvector[1:10,]) 
     cost<-rep(0,length(classes))
     for (j in 1:length(labels)) {
       cost<-cost+(labels[j]==classes)*uvector[,j]
-      cost<-cost-(labels[j]!=classes)*uvector[,j]/(length(labels)-1)
+      cost<-cost-(labels[j]!=classes)*uvector[,j]
+      #cost<-cost+(labels[j]==classes)*uvector[,j]
+      #cost<-cost-(labels[j]!=classes)*uvector[,j]/(length(labels)-1)
     }
 
     error<-sum(-weights*cost*(cost<0))/sum(weights)
+  print(error)
     factor=0.5*log((1-error)/error)
     if (factor<0) {
       break;
@@ -48,57 +52,17 @@ uv_boost_predict<-function(models, features) {
   for (index in 1:length(models)) {
     model<-models[[index]][[1]]
     factor<-models[[index]][[2]]
-    res<-mc_predict(model, features)
+    res<-mc_predict(model, features, mode="raw")
     #res<-mc_boost_predict(model, features)
    
     for (j in 1:length(labels)) {
-      res_mtx[res == labels[j],j]<-res_mtx[res == labels[j],j]+factor
+      res_mtx[,j]<-res_mtx[,j]+res[[1]][,j]
+      # res_mtx[res == labels[j],j]<-res_mtx[res == labels[j],j]+factor
     }  
   }
   classes<-labels[max.col(res_mtx)]
   return(classes)
 }
-
-
-ovo_learn<-function(features, classes, weights) {
-  data<-features
-  labels = unique(classes)
-  models = list()
-  for (index in 1:length(labels)) {
-    label<-as.character(labels[index])
-    bool_classes = (classes == label)
-    data$classes<-bool_classes
-
-    c1<-length(bool_classes[bool_classes %in% T])
-    c0<-length(bool_classes[bool_classes %in% F])
-    local_weights=weights*(bool_classes*(c0-c1) + c1)/(c1+c0)/2;
-
-    # model<-lm(classes~.-classes, data, weights=local_weights)  
-    cntrl<-rpart.control(maxdepth = 1 , minsplit=length(bool_classes), maxsurrogate = 0, usesurrogate=0, maxcompete = 1,cp = 0, xval = 0)
-    model<-rpart(classes~.-classes, data, weights=local_weights, control = cntrl)
-    
-    models[[index]]<-list(model, local_weights)
-    names(models)[index]<-label
-  } 
-   
-  return(models)
-}
-
-ovo_predict<-function(models, features) {
-  labels<-names(models)
-  result<-list()
-  for (index in 1:length(labels)) {
-    label<-as.character(labels[index])
-    model<-models[[index]][[1]]
-    # result[[index]]<-predict.lm(model, features)
-    result[[index]]<-(predict(model, features)>0.5)
-    names(result)[index]<-label
-  }
-  return(result)
-}
-
-
-logit<-function(x){return(exp(x) / (1 + exp(x)))}
 
 cv_test<-function(features, classes, count, learn=mc_boost_learn, predict=mc_boost_predict) {
   smpl<-sample(1:length(classes),length(classes)/2)

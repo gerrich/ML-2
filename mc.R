@@ -72,10 +72,10 @@ mc_predict<-function(model, features, mode="class") {
   ans_mtx<-data.frame(matrix(nrow=length(features[,1]), ncol=size, F))
   for (i in 1:size) {
     m<-bool_model[[i]]
-    ans_mtx[,i]<-predict(m, bool_mtx)
+    ans_mtx[,i]<-predict(m, bool_mtx,type="response")
   }
   if(mode=="raw") {
-    return(ans_mtx,labels)
+    return(list(ans_mtx,labels))
   } else {
     return(labels[max.col(ans_mtx)])
   }
