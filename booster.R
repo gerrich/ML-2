@@ -16,7 +16,7 @@ uv_boost_learn<-function(features, classes, count) {
   labels=unique(classes)
   steps<-list()
   for (index in 1:count) {
-    m<-mc_learn(features, classes, as.integer(sqrt(index)), weights)
+    m<-mc_learn(features, classes, 5, weights)
     #m<-mc_boost_learn(features, classes, 15, weights)
     r<-mc_predict(m,features,mode="raw")
     #r<-mc_boost_predict(m,features)
@@ -26,13 +26,16 @@ uv_boost_learn<-function(features, classes, count) {
     cost<-rep(0,length(classes))
     for (j in 1:length(labels)) {
       cost<-cost+(labels[j]==classes)*uvector[,j]
-      cost<-cost-(labels[j]!=classes)*uvector[,j]
+      cost<-cost-(labels[j]!=classes)*uvector[,j]#/(length(labels)-1)
       #cost<-cost+(labels[j]==classes)*uvector[,j]
       #cost<-cost-(labels[j]!=classes)*uvector[,j]/(length(labels)-1)
     }
 
     error<-sum(-weights*cost*(cost<0))/sum(weights)
   print(error)
+  #print(max(weights))
+  #  weights[weights > 100*mean(weights)]<-0
+  #print(max(weights))
     factor=0.5*log((1-error)/error)
     if (factor<0) {
       break;

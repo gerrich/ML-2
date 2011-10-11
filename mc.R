@@ -33,11 +33,11 @@ mc_learn<-function(features, classes, count,weights=rep(1/length(classes),length
     local_weights[bool_classes]<-c0/(c1+c0)  
     local_weights<-weights
 
-    #cntrl<-rpart.control(maxdepth = count, minsplit=10+length(bool_classes)/(2**count), maxsurrogate = 0, usesurrogate=0, maxcompete = 1,cp = 0, xval = 0)
-    data_model[[i]]<-rpart(classes~.-classes, data, weights=local_weights)#, control=cntrl)
+    cntrl<-rpart.control(maxdepth = count, minsplit=(1+length(bool_classes)/(2**count)), maxsurrogate = 0, usesurrogate=0, maxcompete = 1,cp = 0, xval = 0)
+    data_model[[i]]<-rpart(classes~.-classes, data, weights=local_weights, control=cntrl)
     #data_model[[i]]<-glm(classes~.-classes, data, weights=local_weights, family="binomial")
     bool_mtx[,i]<-predict(data_model[[i]],features)
-    #bool_mtx[,i]<-as.double(bool_classes)
+    #bool_mtx[,i]<-predict(data_model[[i]],features, type="response")
   }
   bool_model<-list()
   for (i in 1:size) {
@@ -67,6 +67,7 @@ mc_predict<-function(model, features, mode="class") {
   bool_mtx<-data.frame(matrix(nrow=length(features[,1]), ncol=length(data_model), F))
   for (i in 1:length(data_model)) {
     bool_mtx[,i]<-predict(data_model[[i]], features)
+    #bool_mtx[,i]<-predict(data_model[[i]], features, type="response")
   }
   
   ans_mtx<-data.frame(matrix(nrow=length(features[,1]), ncol=size, F))
